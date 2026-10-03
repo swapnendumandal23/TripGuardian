@@ -1,0 +1,160 @@
+[
+  {
+    "id": "mandovi_sunset_cruise",
+    "name": "Mandovi River Sunset Cruise",
+    "category": "sightseeing",
+    "type": "outdoor",
+    "location": "Panaji, Goa",
+    "timings": "17:00 - 19:00",
+    "weather_constraints": { "max_rain_mm": 2, "safe_in_storm": false },
+    "indoor_alternative_id": "fishermans_wharf",
+    "description": "Scenic sunset boat cruise along the Mandovi river with Goan music."
+  },
+  {
+    "id": "fishermans_wharf",
+    "name": "The Fisherman's Wharf Panaji",
+    "category": "dining",
+    "type": "indoor",
+    "location": "Panaji, Goa",
+    "timings": "12:00 - 23:00",
+    "weather_constraints": null,
+    "description": "Covered riverside heritage restaurant serving authentic Goan seafood and live fado music."
+  },
+  {
+    "id": "anjuna_beach",
+    "name": "Anjuna Beach",
+    "category": "beach",
+    "type": "outdoor",
+    "location": "Anjuna, North Goa",
+    "timings": "06:00 - 20:00",
+    "weather_constraints": { "max_rain_mm": 5, "safe_in_storm": false },
+    "indoor_alternative_id": "museum_of_goa",
+    "description": "Famous beach known for its rocky outcrops and vibrant flea market."
+  },
+  {
+    "id": "museum_of_goa",
+    "name": "Museum of Goa",
+    "category": "sightseeing",
+    "type": "indoor",
+    "location": "Pilerne, Goa",
+    "timings": "10:00 - 18:00",
+    "weather_constraints": null,
+    "description": "Contemporary art gallery celebrating Goan history and culture in an air-conditioned space."
+  },
+  {
+    "id": "jaipur_amber_palace",
+    "name": "Amber Palace",
+    "category": "heritage",
+    "type": "outdoor",
+    "location": "Jaipur (26.9854865, 75.8513454)",
+    "timings": "10:00 - 18:30",
+    "weather_constraints": { "max_rain_mm": 3, "safe_in_storm": false },
+    "indoor_alternative_id": "jaipur_albert_hall",
+    "description": "Stunning hilltop fort and palace known for its Hindu style elements."
+  },
+  {
+    "id": "jaipur_city_palace",
+    "name": "City Palace Jaipur",
+    "category": "heritage",
+    "type": "outdoor",
+    "location": "Jaipur (26.9257713, 75.8236581)",
+    "timings": "09:30 - 17:00",
+    "weather_constraints": { "max_rain_mm": 5, "safe_in_storm": false },
+    "indoor_alternative_id": "jaipur_albert_hall",
+    "description": "Historic palace complex featuring courtyards, gardens, and buildings."
+  },
+  {
+    "id": "jaipur_albert_hall",
+    "name": "Albert Hall Museum (Central Museum)",
+    "category": "museum",
+    "type": "indoor",
+    "location": "Jaipur (26.9115755, 75.8194875)",
+    "timings": "09:00 - 19:00",
+    "weather_constraints": null,
+    "description": "State museum of Rajasthan, perfect indoor activity during extreme heat or rain."
+  },
+  {
+    "id": "jaipur_hawa_mahal",
+    "name": "Hawa Mahal",
+    "category": "heritage",
+    "type": "indoor",
+    "location": "Jaipur (26.9239363, 75.8267438)",
+    "timings": "09:00 - 16:30",
+    "weather_constraints": null,
+    "description": "Palace of Winds, built from red and pink sandstone."
+  },
+  {
+    "id": "gateway_of_india",
+    "name": "Gateway of India",
+    "category": "heritage",
+    "type": "outdoor",
+    "location": "Mumbai, Maharashtra",
+    "timings": "Open 24 hours",
+    "weather_constraints": { "max_rain_mm": 5, "safe_in_storm": false },
+    "indoor_alternative_id": "elephanta_caves",
+    "description": "Iconic 26-metre basalt arch monument built in 1924, overlooking Mumbai Harbour."
+  },
+  {
+    "id": "elephanta_caves",
+    "name": "Elephanta Caves",
+    "category": "heritage",
+    "type": "indoor",
+    "location": "Mumbai Harbour, Maharashtra",
+    "timings": "09:00 - 17:30 (Closed Monday)",
+    "weather_constraints": null,
+    "description": "UNESCO World Heritage rock-cut cave temples dedicated to Lord Shiva."
+  },
+  {
+    "id": "marine_drive",
+    "name": "Marine Drive",
+    "category": "sightseeing",
+    "type": "outdoor",
+    "location": "Mumbai, Maharashtra",
+    "timings": "Open 24 hours",
+    "weather_constraints": { "max_rain_mm": 2, "safe_in_storm": false },
+    "indoor_alternative_id": "elephanta_caves",
+    "description": "A 3.6 km long boulevard along the coast of South Mumbai, known as the Queen's Necklace."
+  },
+  {
+    "id": "padmanabhaswamy_temple",
+    "name": "Padmanabhaswamy Temple",
+    "category": "heritage",
+    "type": "indoor",
+    "location": "Thiruvananthapuram, Kerala",
+    "timings": "03:30 - 19:20 (with breaks)",
+    "weather_constraints": null,
+    "description": "Richest temple in the world known for its incredible architecture and history."
+  },
+  {
+    "id": "kovalam_beach",
+    "name": "Kovalam Beach",
+    "category": "beach",
+    "type": "outdoor",
+    "location": "Thiruvananthapuram, Kerala",
+    "timings": "06:00 - 19:00",
+    "weather_constraints": { "max_rain_mm": 5, "safe_in_storm": false },
+    "indoor_alternative_id": "padmanabhaswamy_temple",
+    "description": "Famous crescent-shaped beaches perfect for surfing and sunbathing."
+  },
+  {
+    "id": "varkala_cliff",
+    "name": "Varkala Cliff",
+    "category": "sightseeing",
+    "type": "outdoor",
+    "location": "Thiruvananthapuram, Kerala",
+    "timings": "Open 24 hours",
+    "weather_constraints": { "max_rain_mm": 3, "safe_in_storm": false },
+    "indoor_alternative_id": "napier_museum",
+    "description": "Stunning sedimentary formations directly on the beach, ideal for sunset viewing."
+  },
+  {
+    "id": "napier_museum",
+    "name": "Napier Museum",
+    "category": "museum",
+    "type": "indoor",
+    "location": "Thiruvananthapuram, Kerala",
+    "timings": "10:00 - 16:45 (Closed Monday)",
+    "weather_constraints": null,
+    "description": "Indo-Saracenic architecture housing a rare collection of archaeological and historic artifacts."
+  }
+]

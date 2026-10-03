@@ -1,0 +1,26 @@
+[
+  {
+    "id": "rainstorm",
+    "name": "Torrential Rain / Monsoon Approaching",
+    "type": "weather",
+    "severity": "high",
+    "message": "Heavy rainstorm expected in 30 minutes in North Goa.",
+    "trigger_payload": { "scenario": "rain_approaching" }
+  },
+  {
+    "id": "flight_delay_4h",
+    "name": "4-Hour Flight Delay",
+    "type": "flight",
+    "severity": "medium",
+    "message": "Flight 6E-501 has been delayed by 4 hours. New arrival time is 18:00.",
+    "trigger_payload": { "scenario": "flight_delay_4h" }
+  },
+  {
+    "id": "flight_cancelled",
+    "name": "Flight Cancelled",
+    "type": "flight",
+    "severity": "high",
+    "message": "Flight 6E-501 has been cancelled. Please rebook.",
+    "trigger_payload": { "scenario": "flight_cancelled" }
+  }
+]
