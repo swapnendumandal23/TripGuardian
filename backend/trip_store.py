@@ -120,6 +120,7 @@ class TripStore:
                     ("is_demo_location", "INTEGER DEFAULT 0"),
                     ("demo_lat", "REAL"),
                     ("demo_lon", "REAL"),
+                    ("conversation_context", "TEXT DEFAULT '{}'"),
                 ]:
                     try:
                         conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {col} {defn}")
@@ -535,6 +536,25 @@ class TripStore:
             conn.execute("UPDATE trips_multi SET recommended_itinerary = ?, updated_at = ? WHERE id = ?",
                          (recommended_itinerary, time.time(), trip['id']))
             conn.commit()
+
+    def get_conversation_context(self, chat_id: int) -> dict:
+        trip = self.get_trip(chat_id)
+        if not trip: return {}
+        import json
+        try:
+            return json.loads(trip.get("conversation_context") or "{}")
+        except Exception:
+            return {}
+
+    def update_conversation_context(self, chat_id: int, context_data: dict):
+        trip = self.get_trip(chat_id)
+        if not trip: return
+        import json
+        with self._get_connection() as conn:
+            conn.execute("UPDATE trips_multi SET conversation_context = ?, updated_at = ? WHERE id = ?",
+                         (json.dumps(context_data), time.time(), trip['id']))
+            conn.commit()
+
 
     def get_structured_itinerary(self, chat_id: int) -> Optional[dict]:
         """Returns parsed structured itinerary JSON for a trip."""

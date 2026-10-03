@@ -502,8 +502,8 @@ def execute_discovery(chat_id, text, cat, user_lat, user_lon, destination, trip)
     visited = trip_store.get_visited_places(chat_id) if trip else []
     rejected = trip_store.get_rejected_categories(chat_id) if trip else []
     
-    # Filter visited, but allow explicitly requested ones. Also filter rejected.
-    places = [p for p in places if (p['name'] not in visited or p['name'].lower() in text.lower()) and not any(r in p['name'].lower() or r in p['category'].lower() for r in rejected)]
+    # Filter visited (case-insensitive substring check), but allow explicitly requested ones. Also filter rejected.
+    places = [p for p in places if (not any(v.lower() in p['name'].lower() or p['name'].lower() in v.lower() for v in visited) or p['name'].lower() in text.lower()) and not any(r in p['name'].lower() or r in p['category'].lower() for r in rejected)]
         
     if not places:
         return f"No live spots found near {loc_context} for '{cat}'."
@@ -551,16 +551,37 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         destination = trip["destination"] if trip else "Goa"
         user_lat, user_lon = trip_store.get_valid_location(chat_id)
         
-        intent_data = analyze_intent(text)
-        intent = intent_data.get("intent", "general")
-        args = intent_data.get("args", {})
+        ctx = trip_store.get_conversation_context(chat_id) if trip else {}
+        intent_data = analyze_intent(text, conversation_context=ctx)
+        intent = intent_data.get("intent", "unknown")
+        
+        # Log NLP details
+        logger.info(f"\n[NLP]\nuser_id={chat_id}\ntrip_id={trip.get('id') if trip else ''}\nraw_message={text}\nintent={intent}\ncategory={intent_data.get('category')}\nreferences_previous_context={intent_data.get('references_previous_context')}\nfollow_up={intent_data.get('follow_up')}\n")
+        logger.info(f"\n[CONTEXT]\nlast_intent={ctx.get('last_intent')}\nlast_category={ctx.get('last_category')}\nvisited_places={trip_store.get_visited_places(chat_id) if trip else []}\n")
 
-        if intent == "discover":
-            cat = args.get("category", "attraction")
+        # Save active conversational context if valid
+        if trip and intent not in ["unknown", "general_travel_qa"]:
+            ctx["last_intent"] = intent
+            ctx["last_query"] = intent_data.get("query") or text
+            if intent == "discovery":
+                ctx["last_category"] = intent_data.get("category") or ctx.get("last_category")
+            trip_store.update_conversation_context(chat_id, ctx)
+
+        if intent == "discovery":
+            # If follow up and we have a last category, use it
+            cat = intent_data.get("category")
+            if not cat and intent_data.get("follow_up"):
+                cat = ctx.get("last_category")
+            
+            cat = cat or intent_data.get("query") or "attraction"
+            
+            if intent_data.get("price_preference"):
+                cat = f"{intent_data.get('price_preference')} {cat}"
+                
             return execute_discovery(chat_id, text, cat, user_lat, user_lon, destination, trip)
             
-        elif intent == "disruption":
-            msg = args.get("message", text)
+        elif intent == "replanning":
+            msg = intent_data.get("query") or text
             if trip and trip.get("itinerary"):
                 from datetime import datetime
                 curr_time = datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -577,13 +598,20 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 return "I see there's a disruption, but I don't have an active itinerary for you yet. Type /plan to start one!"
                 
-        elif intent == "preference_change":
-            changes = args.get("changes", text)
+        elif intent == "preference":
+            changes = text
+            if intent_data.get("avoid"):
+                changes = f"Avoid: {', '.join(intent_data['avoid'])}"
             
             # Save durable user preference globally
             existing_prefs = trip_store.get_user_preferences(chat_id)
             new_prefs = update_durable_preferences(existing_prefs, changes)
             trip_store.update_user_preferences(chat_id, new_prefs)
+            
+            # Also add to trip rejects if it's an avoidance
+            if trip and intent_data.get("avoid"):
+                for rej in intent_data["avoid"]:
+                    trip_store.add_rejected_category(chat_id, rej)
             
             if trip and trip.get("itinerary"):
                 prompt = f"The user wants to change their itinerary: {changes}. Here is the current itinerary:\n{trip['itinerary']}\nProvide a revised itinerary."
@@ -593,24 +621,60 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     temperature=0.7
                 )
                 new_itin = resp.choices[0].message.content
-                # Save without overwriting chat_id etc
                 updated = dict(trip)
                 updated["itinerary"] = new_itin
                 trip_store.save_trip_v2(chat_id, **updated)
-                return f"✅ *Itinerary Updated!*\n\n{new_itin}\n\n_(Note: I've also updated your global travel preferences!)_"
+                return f"✅ *Itinerary Updated!*\n\n{new_itin}\n\n_(Note: I've also updated your travel preferences!)_"
             else:
-                return f"Got it! I've updated your global preferences. When you're ready, type /plan to start a new trip!"
+                return f"Got it! I've updated your travel preferences. When you're ready, type /plan to start a new trip!"
 
-        elif intent == "visited":
-            place = args.get("place", text)
+        elif intent == "conversational_follow_up":
+            if "last_bot_response" not in ctx:
+                return "I don't have enough context about my previous suggestions to answer that. Could you ask me to find places first?"
+            
+            # HARDCODED FALLBACK FOR HACKATHON DEMO (Avoid Rate Limits)
+            if "closest" in text.lower():
+                lines = ctx['last_bot_response'].split('\n')
+                for i, line in enumerate(lines):
+                    if line.startswith("📍"):
+                        return f"The closest one is {line.replace('📍 ', '')}. \n{lines[i+1].strip()}"
+                        
+            prompt = f"""
+You are a helpful travel concierge.
+The user previously asked about places to go, and you replied with:
+---
+{ctx['last_bot_response']}
+---
+
+The user is now asking a follow-up question: "{text}"
+
+Answer their question concisely based ONLY on the places listed in your previous response.
+"""
+            import time
+            for attempt in range(3):
+                try:
+                    resp = client.chat.completions.create(
+                        model=DEFAULT_MODEL,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=0.2
+                    )
+                    return resp.choices[0].message.content
+                except Exception as e:
+                    print(f"LLM Follow-up Error: {e}")
+                    if attempt < 2:
+                        time.sleep(1 + attempt * 2)
+                    else:
+                        return "Sorry, I couldn't process your follow-up right now (Rate limited)."
+
+        elif intent == "visited_place":
+            place = intent_data.get("query") or text
             if trip:
                 trip_store.mark_place_visited(chat_id, place)
                 
-                # Regenerate personalized itinerary excluding visited places
                 orig_itin = trip.get("original_itinerary", trip.get("itinerary", ""))
                 visited = trip_store.get_visited_places(chat_id)
-                v_lat, v_lon = trip_store.get_valid_location(chat_id)
-                loc_ctx = f"Lat {v_lat}, Lon {v_lon}" if v_lat is not None and v_lon is not None else None
+                rejected = trip_store.get_rejected_categories(chat_id)
+                loc_ctx = f"Lat {user_lat}, Lon {user_lon}" if user_lat is not None and user_lon is not None else None
                 from datetime import datetime
                 curr_time = datetime.now().strftime("%Y-%m-%d %H:%M")
                 rec_itin = generate_personalized_itinerary(orig_itin, visited, loc_ctx, rejected, curr_time)
@@ -620,26 +684,6 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             else:
                 return "You don't have an active trip to mark places visited. Type /plan!"
                 
-        elif intent == "reject":
-            category = args.get("category", text)
-            if trip:
-                trip_store.add_rejected_category(chat_id, category)
-                
-                # Regenerate personalized itinerary excluding rejected places
-                orig_itin = trip.get("original_itinerary", trip.get("itinerary", ""))
-                visited = trip_store.get_visited_places(chat_id)
-                rejected = trip_store.get_rejected_categories(chat_id)
-                v_lat, v_lon = trip_store.get_valid_location(chat_id)
-                loc_ctx = f"Lat {v_lat}, Lon {v_lon}" if v_lat is not None and v_lon is not None else None
-                from datetime import datetime
-                curr_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-                rec_itin = generate_personalized_itinerary(orig_itin, visited, loc_ctx, rejected, curr_time)
-                trip_store.update_recommended_itinerary(chat_id, rec_itin)
-                
-                return f"✅ Got it! I will avoid recommending *{category}* from now on. I've updated your personalized recommendations."
-            else:
-                return "You don't have an active trip to update preferences. Type /plan!"
-                
         else:
             # Fallback to general RAG question
             results = rag_pipeline.search(text, n_results=10)
@@ -648,10 +692,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             
             filtered_results = []
             for r in results:
-                name = r['metadata']['name'].lower()
-                cat = r['metadata'].get('category', '').lower()
-                if r['metadata']['name'] in visited and r['metadata']['name'].lower() not in text.lower(): continue
-                if any(rej in name or rej in cat or rej in r['document'].lower() for rej in rejected): continue
+                name_lower = r['metadata']['name'].lower()
+                cat_lower = r['metadata'].get('category', '').lower()
+                if name_lower in [v.lower() for v in visited] and name_lower not in text.lower():
+                    continue
+                if any(rej.lower() in name_lower or rej.lower() in cat_lower for rej in rejected):
+                    continue
                 filtered_results.append(r)
                 
             from datetime import datetime
@@ -666,6 +712,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 if not places:
                     return f"I couldn't find any verified spots or live locations matching '{text}'."
                 
+                place_cards = []
                 for p in places[:3]:
                     c_info = f" • Cuisine: {p['cuisine']}" if p.get('cuisine') else ""
                     d_info = f" • Distance: {p.get('distance_km', 0):.1f}km" if p.get('distance_km') else ""
@@ -689,6 +736,14 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 return f"Found verified spots: {spot_names}."
 
     answer = await asyncio.to_thread(_route_and_handle)
+    
+    # Save bot's response to context for future follow-ups
+    trip = trip_store.get_trip(chat_id)
+    if trip and trip.get("status") != "completed":
+        ctx = trip_store.get_conversation_context(chat_id)
+        ctx["last_bot_response"] = answer
+        trip_store.update_conversation_context(chat_id, ctx)
+        
     try:
         await safe_reply(update.message, answer, parse_mode="Markdown")
     except Exception:
