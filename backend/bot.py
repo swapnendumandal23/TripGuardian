@@ -480,10 +480,14 @@ async def reset_trip_command(update: Update, context: ContextTypes.DEFAULT_TYPE)
 # --- Natural Concierge Chat ---
 
 def execute_discovery(chat_id, text, cat, user_lat, user_lon, destination, trip):
-    v_lat, v_lon = trip_store.get_valid_location(chat_id) if trip else (user_lat, user_lon)
-    if v_lat is not None and v_lon is not None:
+    loc_data = trip_store.get_current_location(chat_id) if trip else None
+    
+    if loc_data:
+        v_lat, v_lon = loc_data["latitude"], loc_data["longitude"]
+        src = loc_data.get("source", "real")
+        logger.info(f"\n[DISCOVERY REQUEST]\nquery={cat}\nuser_id={chat_id}\ntrip_id={trip.get('id') if trip else ''}\nlatitude_used={v_lat}\nlongitude_used={v_lon}\nradius=5000\nsource={src}\n")
         places = discover_live_places(destination, cat, lat=v_lat, lon=v_lon)
-        loc_context = "your current location"
+        loc_context = "your simulated location" if src == "demo" else "your current location"
         is_live_prox = True
     else:
         fallback_loc = destination
@@ -787,6 +791,7 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
     trip = trip_store.get_trip(chat_id)
     if trip:
         await asyncio.to_thread(trip_store.update_location, chat_id, lat, lon)
+        logger.info(f"\n[LOCATION RECEIVED]\nuser_id={chat_id}\nchat_id={chat_id}\ntrip_id={trip.get('id')}\nlatitude={lat}\nlongitude={lon}\ntimestamp={time.time()}\nsource=real\n")
         await safe_reply(update.message, f"📍 *Location Updated*\nI've saved your current coordinates ({lat:.4f}, {lon:.4f}). Re-optimizing your personalized itinerary for this new area...")
         
         # Regenerate personalized itinerary for the new location
@@ -799,6 +804,39 @@ async def handle_location(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await safe_reply(update.message, f"✨ *Itinerary Context Updated!*\nYour recommended schedule has been adapted for your new location. Type /itinerary to view it.")
     else:
         await safe_reply(update.message, "📍 *Location Received*\nBut you don't have an active trip yet! Type /plan to start one.")
+
+async def demo_location_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    chat_id = update.effective_chat.id
+    if not context.args:
+        await safe_reply(update.message, "Usage: /demo_location [Location Name or Lat,Lon]\nExample: /demo_location Baga Beach, Goa")
+        return
+        
+    query = " ".join(context.args)
+    trip = trip_store.get_trip(chat_id)
+    if not trip:
+        await safe_reply(update.message, "No active trip found to set demo location.")
+        return
+        
+    # Attempt to parse as lat,lon
+    import re
+    coords_match = re.match(r"^\s*([+-]?\d+\.?\d*)\s*,\s*([+-]?\d+\.?\d*)\s*$", query)
+    if coords_match:
+        lat, lon = float(coords_match.group(1)), float(coords_match.group(2))
+        name = query
+    else:
+        # Use places_service resolve_coordinates
+        from places_service import resolve_coordinates
+        try:
+            coord = await asyncio.to_thread(resolve_coordinates, query)
+            lat, lon = coord['lat'], coord['lon']
+            name = coord['name']
+        except Exception as e:
+            await safe_reply(update.message, f"Could not resolve demo location: {e}")
+            return
+            
+    await asyncio.to_thread(trip_store.update_demo_location, chat_id, lat, lon, is_demo=True)
+    logger.info(f"\n[LOCATION RECEIVED]\nuser_id={chat_id}\nchat_id={chat_id}\ntrip_id={trip.get('id')}\nlatitude={lat}\nlongitude={lon}\ntimestamp={time.time()}\nsource=demo\n")
+    await safe_reply(update.message, f"📍 *Demo location updated to {name}* ({lat:.4f}, {lon:.4f}).\nThis will now be used for all discovery and itinerary replanning.")
 
 async def global_error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Global error handler caught: {context.error}")
@@ -848,6 +886,7 @@ def create_bot_application():
     app.add_handler(CommandHandler("flight", flight_command))
     app.add_handler(CommandHandler("poll_now", poll_now_command))
     app.add_handler(CommandHandler("reset", reset_trip_command))
+    app.add_handler(CommandHandler("demo_location", demo_location_command))
     app.add_handler(CallbackQueryHandler(disruption_callback))
     app.add_handler(CommandHandler("parse", parse_text_itinerary))
     app.add_handler(plan_conv)
