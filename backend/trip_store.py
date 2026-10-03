@@ -283,11 +283,11 @@ class TripStore:
         with self._get_connection() as conn:
             if v_lat is not None and v_lon is not None:
                 conn.execute("""
-                    UPDATE trips_multi SET current_lat = ?, current_lon = ?, location_updated_at = ?, updated_at = ? WHERE id = ?
+                    UPDATE trips_multi SET current_lat = ?, current_lon = ?, location_updated_at = ?, is_demo_location = 0, updated_at = ? WHERE id = ?
                 """, (v_lat, v_lon, now, now, trip['id']))
             else:
                 conn.execute("""
-                    UPDATE trips_multi SET current_lat = NULL, current_lon = NULL, location_updated_at = NULL, updated_at = ? WHERE id = ?
+                    UPDATE trips_multi SET current_lat = NULL, current_lon = NULL, location_updated_at = NULL, is_demo_location = 0, updated_at = ? WHERE id = ?
                 """, (now, trip['id']))
             conn.commit()
 
@@ -470,7 +470,7 @@ class TripStore:
         transport_details: Optional[str] = None,
         original_itinerary: Optional[str] = None,
         recommended_itinerary: Optional[str] = None,
-        status: str = "upcoming"
+        status: str = "active"
     ):
         """Enhanced save that inserts a new trip entry."""
         now = time.time()
