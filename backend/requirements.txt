@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+chromadb
+openai
+apscheduler
+python-telegram-bot
+pypdf
+pillow

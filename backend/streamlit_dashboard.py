@@ -146,6 +146,12 @@ with col2:
     
     tab1, tab2, tab3, tab4 = st.tabs(["✈️ Flights", "🌧️ Weather", "🚦 Traffic", "👥 Venues"])
 
+    active_dest = "Goa"
+    if target_id:
+        trip = trip_store.get_trip(target_id)
+        if trip:
+            active_dest = trip.get("destination", "Goa")
+            
     with tab1:
         flight_num = st.text_input("Flight Number", value="6E-501")
         delay_mins = st.slider("Delay Minutes", 15, 360, 120)
@@ -171,7 +177,7 @@ with col2:
                 st.rerun()
 
     with tab2:
-        dest = st.text_input("Destination", value="Goa")
+        dest = st.text_input("Destination", value=active_dest)
         event = st.selectbox("Event Type", ["heavy_rain", "thunderstorm", "heatwave", "cyclone_warning"])
         severity = st.select_slider("Severity", ["low", "medium", "high", "extreme"], value="high")
         if st.button("🚀 Trigger Weather Event", use_container_width=True):
@@ -184,40 +190,40 @@ with col2:
                 st.rerun()
 
     with tab3:
-        route = st.text_input("Route Description", value="Airport to Hotel Transfer")
+        route = st.text_input("Route Description", value=f"Airport to Hotel in {active_dest}")
         t_delay = st.slider("Traffic Delay (mins)", 15, 120, 45)
         t_cause = st.selectbox("Cause", ["Multi-vehicle accident", "Road construction", "VVIP Movement", "Waterlogging"])
         if st.button("🚀 Trigger Traffic Incident", use_container_width=True):
             if not target_id:
                 st.error("Target user required!")
             else:
-                sim_engine.simulate_traffic_incident(route, target_id, t_delay, t_cause, dest)
+                sim_engine.simulate_traffic_incident(route, target_id, t_delay, t_cause, active_dest)
                 st.success("Traffic incident simulation created!")
                 time.sleep(1)
                 st.rerun()
 
     with tab4:
         st.markdown("**Crowd Surge**")
-        loc_name = st.text_input("Location Name", value="Calangute Beach")
+        loc_name = st.text_input("Location Name", value=f"Main Attraction in {active_dest}")
         crowd_lvl = st.select_slider("Crowd Level", ["low", "moderate", "high", "extreme"], value="extreme")
         if st.button("🚀 Trigger Crowd Surge", use_container_width=True):
             if not target_id:
                 st.error("Target user required!")
             else:
-                sim_engine.simulate_crowd_surge(loc_name, target_id, crowd_lvl, dest)
+                sim_engine.simulate_crowd_surge(loc_name, target_id, crowd_lvl, active_dest)
                 st.success("Crowd surge simulation created!")
                 time.sleep(1)
                 st.rerun()
             
         st.divider()
         st.markdown("**Venue Closure**")
-        venue_name = st.text_input("Venue Name", value="Curlies Beach Shack")
+        venue_name = st.text_input("Venue Name", value=f"Popular Restaurant in {active_dest}")
         v_reason = st.selectbox("Closure Reason", ["Holiday closure", "Emergency maintenance", "Private event", "Staff shortage"])
         if st.button("🚀 Trigger Venue Closure", use_container_width=True):
             if not target_id:
                 st.error("Target user required!")
             else:
-                sim_engine.simulate_venue_closure(venue_name, target_id, v_reason, dest)
+                sim_engine.simulate_venue_closure(venue_name, target_id, v_reason, active_dest)
                 st.success("Venue closure simulation created!")
                 time.sleep(1)
                 st.rerun()

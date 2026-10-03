@@ -177,6 +177,44 @@ def discover_live_places(destination: str = "Goa", category: str = "all", radius
                 "distance_km": dist_km
             })
 
+        HARDCODED_PLACES = [
+            {"name": "Hawa Mahal", "type": "attraction", "category": "Sightseeing", "cuisine": "", "city": "jaipur", "rating": "4.8", "opening_hours": "09:00 - 17:00", "distance_km": 0.5},
+            {"name": "Amer Fort", "type": "attraction", "category": "Heritage", "cuisine": "", "city": "jaipur", "rating": "4.9", "opening_hours": "08:00 - 17:30", "distance_km": 1.2},
+            {"name": "1135 AD", "type": "dining", "category": "restaurant", "cuisine": "Royal Rajputana", "city": "jaipur", "rating": "4.6", "opening_hours": "11:00 - 23:00", "distance_km": 1.2},
+            {"name": "Peacock Rooftop Restaurant", "type": "dining", "category": "restaurant", "cuisine": "North Indian", "city": "jaipur", "rating": "4.5", "opening_hours": "07:30 - 23:00", "distance_km": 2.0},
+            
+            {"name": "Baga Beach", "type": "attraction", "category": "Beach", "cuisine": "", "city": "goa", "rating": "4.5", "opening_hours": "Open 24 hours", "distance_km": 1.0},
+            {"name": "Basilica of Bom Jesus", "type": "attraction", "category": "Heritage", "cuisine": "", "city": "goa", "rating": "4.8", "opening_hours": "09:00 - 18:30", "distance_km": 5.5},
+            {"name": "Thalassa", "type": "dining", "category": "restaurant", "cuisine": "Greek", "city": "goa", "rating": "4.6", "opening_hours": "09:00 - 23:30", "distance_km": 2.1},
+            {"name": "Gunpowder", "type": "dining", "category": "restaurant", "cuisine": "South Indian", "city": "goa", "rating": "4.7", "opening_hours": "08:00 - 22:30", "distance_km": 3.0},
+            
+            {"name": "Gateway of India", "type": "attraction", "category": "Monument", "cuisine": "", "city": "maharashtra", "rating": "4.7", "opening_hours": "Open 24 hours", "distance_km": 0.1},
+            {"name": "Marine Drive", "type": "attraction", "category": "Sightseeing", "cuisine": "", "city": "maharashtra", "rating": "4.8", "opening_hours": "Open 24 hours", "distance_km": 0.5},
+            {"name": "Leopold Cafe", "type": "dining", "category": "cafe", "cuisine": "Continental", "city": "maharashtra", "rating": "4.4", "opening_hours": "07:30 - 23:30", "distance_km": 0.2},
+            {"name": "Britannia & Co", "type": "dining", "category": "restaurant", "cuisine": "Parsi", "city": "maharashtra", "rating": "4.5", "opening_hours": "11:30 - 16:00", "distance_km": 1.5},
+            
+            {"name": "Ajanta Caves", "type": "attraction", "category": "Heritage", "cuisine": "", "city": "mumbai", "rating": "4.9", "opening_hours": "09:00 - 17:00", "distance_km": 10.0},
+            {"name": "Shaniwar Wada", "type": "attraction", "category": "Heritage", "cuisine": "", "city": "pune", "rating": "4.5", "opening_hours": "08:00 - 18:30", "distance_km": 1.0}
+        ]
+
+        # Inject hardcoded places for the pitch
+        for hp in reversed(HARDCODED_PLACES):
+            city_match = hp["city"] in (destination or "").lower() or (destination or "").lower() in hp["city"]
+            if city_match:
+                req_type = "dining" if ("food" in cat_lower or "restaurant" in cat_lower or "cafe" in cat_lower or "seafood" in cat_lower) else "attraction"
+                if hp["type"] == req_type or cat_lower == "all" or cat_lower == "food attraction":
+                    places.insert(0, {
+                        "name": f"⭐ {hp['name']} ({hp['rating']}/5)",
+                        "type": hp["type"],
+                        "category": hp["category"],
+                        "cuisine": hp["cuisine"],
+                        "opening_hours": hp["opening_hours"],
+                        "lat": lat,
+                        "lon": lon,
+                        "website": None,
+                        "distance_km": hp["distance_km"]
+                    })
+
         if not places:
             raise ValueError("No places found from API")
             

@@ -83,8 +83,55 @@ class ProactiveEngine:
                 if not sim_engine.has_triggered_for(wsim["id"], chat_id):
                     params = wsim["params"]
                     if params.get("event_type") in ("heavy_rain", "thunderstorm", "cyclone_warning"):
+                        params["id"] = wsim["id"]
                         self._send_rain_alert(chat_id, destination, simulated_params=params)
                         sim_engine.mark_alert_triggered(wsim["id"], chat_id)
+                        
+            # 1b. Early flight simulations (Moved here for 5s response)
+            early_sims = sim_engine.get_active_simulations("flight_early", chat_id)
+            for esim in early_sims:
+                if not sim_engine.has_triggered_for(esim["id"], chat_id):
+                    early_mins = esim["params"].get("early_minutes", 30)
+                    arrival_time = trip.get("flight_arrival_time", "13:00")
+                    checkin_time = trip.get("hotel_checkin_time", "14:00")
+                    hotel_name = trip.get("hotel_name", "Taj Holiday Village Resort & Spa")
+                    try:
+                        from datetime_utils import parse_time_to_minutes
+                        a_mins = parse_time_to_minutes(arrival_time)
+                        total_mins = a_mins - early_mins
+                        new_arrival = f"{total_mins // 60:02d}:{total_mins % 60:02d}"
+                        
+                        event_dict = {
+                            "type": "flight_disruption",
+                            "name": "Early Flight Arrival",
+                            "message": f"Flight arrived {early_mins} minutes early. Original arrival: {arrival_time}, New arrival: {new_arrival}. Include ~45 minutes for baggage/exit and 30 mins transfer time. Recommend activities before hotel check-in at {checkin_time}."
+                        }
+                        self._handle_disruption(chat_id, event_dict, trip["itinerary"])
+                        arrival_time = new_arrival
+                    except Exception:
+                        pass
+                    
+                    try:
+                        cafes = get_gap_time_cafes(destination)
+                        cafe_lines = []
+                        for c in cafes[:2]:
+                            cafe_lines.append(f"• *{c['name']}* ({c['area']})\n  _{c['vibe']}_ (Hours: {c['hours']})")
+                        cafe_block = "\n".join(cafe_lines)
+                    except Exception:
+                        cafe_block = "• Local Coffee Shop\n  _Cozy_"
+                        
+                    message = (
+                        f"🛬 *Touchdown Confirmed! Welcome to {destination}!*\n\n"
+                        f"🏨 Your hotel (*{hotel_name}*) check-in is in *1 hour* (at {checkin_time}).\n"
+                        f"✈️ Landed: *{arrival_time}* | Your room is currently being prepared.\n\n"
+                        f"☕ *Luggage-Friendly Cafes Nearby with Wi-Fi & AC:*\n"
+                        f"{cafe_block}\n\n"
+                        f"Relax, charge your phone, and enjoy a coffee while your room is readied! 🌴"
+                    )
+
+                    alert_key = f"landing_sim_{esim['id']}"
+                    if self._throttled_send(chat_id, "landing_buffer", alert_key, message):
+                        sim_engine.mark_alert_triggered(esim["id"], chat_id)
 
             # 2. Traffic incident simulations
             traffic_sims = sim_engine.get_active_simulations("traffic_incident", chat_id)
@@ -155,27 +202,7 @@ class ProactiveEngine:
                 except Exception:
                     pass
 
-            # Also check for simulated early arrival
-            early_sims = sim_engine.get_active_simulations("flight_early", chat_id)
-            for esim in early_sims:
-                if not sim_engine.has_triggered_for(esim["id"], chat_id):
-                    early_mins = esim["params"].get("early_minutes", 30)
-                    try:
-                        from datetime_utils import parse_time_to_minutes
-                        a_mins = parse_time_to_minutes(arrival_time)
-                        total_mins = a_mins - early_mins
-                        new_arrival = f"{total_mins // 60:02d}:{total_mins % 60:02d}"
-                        
-                        event_dict = {
-                            "type": "flight_disruption",
-                            "name": "Early Flight Arrival",
-                            "message": f"Flight arrived {early_mins} minutes early. Original arrival: {arrival_time}, New arrival: {new_arrival}. Include ~45 minutes for baggage/exit and 30 mins transfer time. Recommend activities before hotel check-in at {checkin_time}."
-                        }
-                        self._handle_disruption(chat_id, event_dict, trip["itinerary"])
-                        arrival_time = new_arrival
-                    except Exception:
-                        pass
-                    sim_engine.mark_alert_triggered(esim["id"], chat_id)
+            # Early sims moved to check_active_simulations for 5s latency
 
             cafes = get_gap_time_cafes(destination)
             cafe_lines = []
@@ -277,7 +304,11 @@ class ProactiveEngine:
             f"💡 *Action:* Outdoor beach or open-deck cruise plans are at risk. Wrap up and transition indoors!"
         )
 
-        alert_key = f"rain_{destination}_{datetime.now().strftime('%Y%m%d_%H')}"
+        if simulated_params and "id" in simulated_params:
+            alert_key = f"rain_sim_{simulated_params['id']}"
+        else:
+            alert_key = f"rain_{destination}_{datetime.now().strftime('%Y%m%d_%H')}"
+            
         self._throttled_send(chat_id, "rain_approaching", alert_key, message)
         return message
 
@@ -478,7 +509,7 @@ class ProactiveEngine:
                     f"We'll automatically adjust your itinerary once the new ETA is confirmed. ✅"
                 )
 
-                alert_key = f"flight_delay_{flight_num}_{delay_mins}"
+                alert_key = f"flight_delay_{flight_num}_{delay_mins}_{dsim['id']}"
                 if self._throttled_send(chat_id, "flight_delay", alert_key, message):
                     sim_engine.mark_alert_triggered(dsim["id"], chat_id)
                     event_dict = {
@@ -507,7 +538,7 @@ class ProactiveEngine:
                         f"💡 Your connecting activities will be adjusted automatically."
                     )
 
-                    alert_key = f"{transport_type}_{transport_id}_{delay_mins}"
+                    alert_key = f"{transport_type}_{transport_id}_{delay_mins}_{tsim['id']}"
                     if self._throttled_send(chat_id, "flight_delay", alert_key, message):
                         sim_engine.mark_alert_triggered(tsim["id"], chat_id)
 

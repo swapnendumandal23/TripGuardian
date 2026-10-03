@@ -1,0 +1,66 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+*.so
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Environment files (NEVER commit secrets)
+.env
+*.env
+
+# Database files (runtime state, not code)
+*.db
+*.db-wal
+*.db-shm
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# ChromaDB vector store (regenerated at startup)
+backend/data/chroma_store/
+
+# Logs
+*.log
+logs/
+
+# Scratch and debug scripts
+backend/scratch_*.py
+backend/debug_*.py
+backend/verify_credentials.py
+backend/list_gemini_models.py
+backend/generate_dummy_itinerary.py
+
+# Test databases
+test_*.db
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Streamlit
+.streamlit/
+
+# PDFs uploaded during testing
+dummy_trip_itinerary.pdf
+backend/dummy_trip_itinerary.pdf
